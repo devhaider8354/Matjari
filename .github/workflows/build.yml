@@ -1,0 +1,33 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/matjari_ci
+      APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: '1'
+      DEMO_MODE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Generate temporary CI session secret
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_ENV, 'JWT_SECRET=' + require('crypto').randomBytes(48).toString('hex') + '\n')"
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run check:public
+      - run: npm run build
